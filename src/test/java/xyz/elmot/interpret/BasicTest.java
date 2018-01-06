@@ -1,15 +1,11 @@
 package xyz.elmot.interpret;
 
-import org.antlr.v4.runtime.CharStreams;
-import org.antlr.v4.runtime.CodePointCharStream;
-import org.antlr.v4.runtime.CommonTokenStream;
-import org.junit.Assert;
 import org.junit.Test;
-import xyz.elmot.interpret.eval.EvalException;
-import xyz.elmot.interpret.eval.ProgVisitor;
 
-import java.io.CharArrayWriter;
-import java.io.PrintWriter;
+import java.util.List;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class BasicTest {
     @Test
@@ -77,14 +73,14 @@ public class BasicTest {
         doTest("out 2.5^2.5", "9.88211768802618628626533");
     }
 
-    @Test(expected = EvalException.class)
+    @Test
     public void powTest3() {
-        doTest("out 1^99999999999999999999999999999", "");
+        doTestException("out 1^99999999999999999999999999999", "Invalid operation");
     }
 
-    @Test(expected = EvalException.class)
+    @Test
     public void powTest4() {
-        doTest("out -2.5^2.5", "");
+        doTestException("out -2.5^2.5", "NaN");
     }
 
     @Test
@@ -97,9 +93,9 @@ public class BasicTest {
         doTest("var i = 1000\n var t = map({1,2}, i ->i+1)\nout i\n out t", "1000[2,3]");
     }
 
-    @Test(expected = EvalException.class)
+    @Test
     public void visibilityTest2() {
-        doTest("var i = 1000\nout i\n out t", "");
+        doTestException("var i = 1000\nout i\n out t", "t is not defined");
     }
 
     @Test
@@ -112,15 +108,15 @@ public class BasicTest {
     }
 
     private void doTest(String input, String expectedOutput) {
-        CodePointCharStream stream = CharStreams.fromString(input);
-        AtorLexer lexer = new AtorLexer(stream);
-        CommonTokenStream tokenStream = new CommonTokenStream(lexer);
-        AtorParser parser = new AtorParser(tokenStream);
-        AtorParser.ProgramContext program = parser.program();
         StringBuilder stringBuilder = new StringBuilder();
-        AtorBaseVisitor<Void> visitor = new ProgVisitor(stringBuilder::append);
-        program.accept(visitor);
-        Assert.assertEquals(expectedOutput, stringBuilder.toString());
+        assertTrue(Ator.runScript(input, stringBuilder::append).isEmpty());
+        assertEquals(expectedOutput, stringBuilder.toString());
+    }
+
+    private void doTestException(String input, String firstMessage) {
+        List<Ator.ErrorInfo> errorInfos = Ator.runScript(input, s -> {
+        });
+        assertEquals(firstMessage, errorInfos.get(0).getMsg());
     }
 
 }

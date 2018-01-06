@@ -11,7 +11,7 @@ public class EvalException extends RuntimeException{
         this.ctx = ctx;
     }
 
-    public ParserRuleContext getCtx() {
+    public ParserRuleContext getContext() {
         return ctx;
     }
 }

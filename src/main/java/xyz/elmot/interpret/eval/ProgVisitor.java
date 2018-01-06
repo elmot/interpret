@@ -26,16 +26,18 @@ public class ProgVisitor extends AtorBaseVisitor<Void> {
     public Void visitVar(AtorParser.VarContext ctx) {
         String name = ctx.NAME().getText();
         ExprVisitor exprVisitor = new ExprVisitor(vars);
-        ctx.expr().accept(exprVisitor);
-        vars.put(name, exprVisitor.getResult(ctx));
+        AtorParser.ExprContext expr = ctx.expr();
+        expr.accept(exprVisitor);
+        vars.put(name, exprVisitor.getResult(expr));
         return null;
     }
 
     @Override
     public Void visitOut(AtorParser.OutContext ctx) {
         ExprVisitor exprVisitor = new ExprVisitor(vars);
-        ctx.expr().accept(exprVisitor);
-        out.accept(exprVisitor.getResult(ctx).getString());
+        AtorParser.ExprContext expr = ctx.expr();
+        expr.accept(exprVisitor);
+        out.accept(exprVisitor.getResult(expr).getString());
         return null;
     }
 }
