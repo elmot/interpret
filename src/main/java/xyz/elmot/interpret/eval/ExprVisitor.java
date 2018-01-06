@@ -7,7 +7,6 @@ import xyz.elmot.interpret.AtorParser;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.util.*;
-import java.util.function.BiFunction;
 import java.util.stream.LongStream;
 import java.util.stream.Stream;
 
@@ -15,12 +14,13 @@ public class ExprVisitor extends AtorBaseVisitor<Void> {
 
     @SuppressWarnings("WeakerAccess")
     public static final int MATH_PRECISION = 24;
+    @SuppressWarnings("WeakerAccess")
+    public static final MathContext MATH_CONTEXT = new MathContext(MATH_PRECISION);
 
     private final Map<String, Value> vars;
     private Deque<Value> valueStack = new ArrayDeque<>();
     private Deque<Op> opStack = new ArrayDeque<>();
     private boolean unaryMinus;
-    private static final MathContext MATH_CONTEXT = new MathContext(MATH_PRECISION);
 
     @SuppressWarnings("WeakerAccess")
     public ExprVisitor(Map<String, Value> vars) {
@@ -96,43 +96,7 @@ public class ExprVisitor extends AtorBaseVisitor<Void> {
     @Override
     public Void visitOp(AtorParser.OpContext ctx) {
         String opText = ctx.OP().getText();
-        Op op;
-        switch (opText) {
-            case "+":
-                op = new Op((a, b) -> a.add(b, MATH_CONTEXT), 1);
-                break;
-            case "-":
-                op = new Op((a, b) -> a.subtract(b, MATH_CONTEXT), 2);
-                break;
-            case "*":
-                op = new Op((a, b) -> a.multiply(b, MATH_CONTEXT), 3);
-                break;
-            case "/":
-                op = new Op((a, b) -> a.divide(b, MATH_CONTEXT), 4);
-                break;
-            case "^":
-                op = new Op(
-                        (a, b) -> {
-                            try {
-                                if (b.scale() > 0) {
-                                    double pow = Math.pow(a.doubleValue(), b.doubleValue());
-                                    if (Double.isFinite(pow)) {
-                                        return new BigDecimal(pow, MATH_CONTEXT);
-                                    } else {
-                                        throw new EvalException("" + pow, ctx);
-                                    }
-                                } else {
-                                    return a.pow(b.intValue(), MATH_CONTEXT);
-                                }
-                            } catch (ArithmeticException e) {
-                                throw new EvalException(e.getMessage(), ctx);
-                            }
-                        }
-                        , 5);
-                break;
-            default:
-                throw new EvalException("Unknown operation " + opText, ctx);
-        }
+        Op op = Op.create(opText, ctx);
         resolve(op.priority, ctx);
         opStack.push(op);
         return null;
@@ -159,7 +123,11 @@ public class ExprVisitor extends AtorBaseVisitor<Void> {
             Op op = opStack.pop();
             BigDecimal b = valueStack.pop().getNumber(ctx);
             BigDecimal a = valueStack.pop().getNumber(ctx);
-            valueStack.push(new Value.Num(op.operation.apply(a, b)));
+            try {
+                valueStack.push(new Value.Num(op.operation.apply(a, b)));
+            } catch (ArithmeticException e) {
+                throw new EvalException(e.getMessage(), ctx);
+            }
         }
     }
 
@@ -186,13 +154,4 @@ public class ExprVisitor extends AtorBaseVisitor<Void> {
         return exprVisitor.getResult(exprContext);
     }
 
-    private static class Op {
-        final BiFunction<BigDecimal, BigDecimal, BigDecimal> operation;
-        final int priority;
-
-        Op(BiFunction<BigDecimal, BigDecimal, BigDecimal> operation, int priority) {
-            this.operation = operation;
-            this.priority = priority;
-        }
-    }
 }
