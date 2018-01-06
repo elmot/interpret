@@ -13,11 +13,13 @@ import java.util.stream.Stream;
 
 public class ExprVisitor extends AtorBaseVisitor<Void> {
 
+    @SuppressWarnings("WeakerAccess")
+    public static final int MATH_PRECISION = 24;
+
     private final Map<String, Value> vars;
     private Deque<Value> valueStack = new ArrayDeque<>();
     private Deque<Op> opStack = new ArrayDeque<>();
     private boolean unaryMinus;
-    public static final int MATH_PRECISION = 24;
     private static final MathContext MATH_CONTEXT = new MathContext(MATH_PRECISION);
 
     @SuppressWarnings("WeakerAccess")
@@ -133,25 +135,22 @@ public class ExprVisitor extends AtorBaseVisitor<Void> {
         }
         resolve(op.priority, ctx);
         opStack.push(op);
-
         return null;
     }
 
     @Override
     public Void visitReduce(AtorParser.ReduceContext ctx) {
         Stream<BigDecimal> seq = calcValueSeq(ctx.expr(0), vars);
-        BigDecimal value[] = new BigDecimal[]{calcValueNum(ctx.expr(1), vars)};//todo make ok
         String varNameA = ctx.NAME(0).getText();
         String varNameB = ctx.NAME(1).getText();
         AtorParser.ExprContext lambda = ctx.expr(2);
         Map<String, Value> localVars = new HashMap<>(vars);
-        seq.forEachOrdered(n -> {
-            localVars.put(varNameA, new Value.Num(value[0]));
-            localVars.put(varNameB, new Value.Num(n));
-            value[0] = calcValueNum(lambda, localVars);
-
+        BigDecimal res = seq.reduce(calcValueNum(ctx.expr(1), vars), (a, b) -> {
+            localVars.put(varNameA, new Value.Num(a));
+            localVars.put(varNameB, new Value.Num(b));
+            return calcValueNum(lambda, localVars);
         });
-        valueStack.push(new Value.Num(value[0]));
+        valueStack.push(new Value.Num(res));
         return null;
     }
 
