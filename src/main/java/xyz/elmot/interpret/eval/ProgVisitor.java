@@ -3,22 +3,22 @@ package xyz.elmot.interpret.eval;
 import xyz.elmot.interpret.AtorBaseVisitor;
 import xyz.elmot.interpret.AtorParser;
 
-import java.io.PrintWriter;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.function.Consumer;
 
 public class ProgVisitor extends AtorBaseVisitor<Void> {
-    public ProgVisitor(PrintWriter out) {
+    public ProgVisitor(Consumer<String> out) {
         this.out = out;
     }
 
-    private final PrintWriter out;
+    private final Consumer<String> out;
     private Map<String, Value> vars = new LinkedHashMap<>();
 
     @Override
     public Void visitPrint(AtorParser.PrintContext ctx) {
         String text = ctx.TEXT().getText();
-        out.print(text.substring(1, text.length() - 1));
+        out.accept(text.substring(1, text.length() - 1));
         return null;
     }
 
@@ -35,7 +35,7 @@ public class ProgVisitor extends AtorBaseVisitor<Void> {
     public Void visitOut(AtorParser.OutContext ctx) {
         ExprVisitor exprVisitor = new ExprVisitor(vars);
         ctx.expr().accept(exprVisitor);
-        out.print(exprVisitor.getResult(ctx).getString());
+        out.accept(exprVisitor.getResult(ctx).getString());
         return null;
     }
 }

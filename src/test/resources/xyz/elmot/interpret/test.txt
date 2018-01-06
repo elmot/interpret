@@ -1,8 +1,0 @@
-print "aaa"
-print "bbb"
-out bb
-out (12e01 + b) * aa
-out 12.1e-01 + aa
-var s = {1 ,18}
-var m = map ({1,4}, i-> i+1)
-var pi = 4 * reduce(sequence, 0, x y -> x + y)

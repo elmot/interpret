@@ -46,6 +46,7 @@ public class BasicTest {
     public void priorityTest2() {
         doTest("out 2^2*2+2", "10");
     }
+
     @Test
     public void priorityTest3() {
         doTest("out 2^2*(2+2)", "16");
@@ -87,6 +88,11 @@ public class BasicTest {
     }
 
     @Test
+    public void powTest5() {
+        doTest("out 10^(-2)", "0.01");
+    }
+
+    @Test
     public void visibilityTest1() {
         doTest("var i = 1000\n var t = map({1,2}, i ->i+1)\nout i\n out t", "1000[2,3]");
     }
@@ -102,19 +108,19 @@ public class BasicTest {
                 "var sequence = map({0, n}, i -> (-1)^i / (2.0 * i + 1))\n" +
                 "var pi = 4 * reduce(sequence, 0, x y -> x + y)\n" +
                 "print \"pi = \"\n" +
-                "out pi\n","pi = 3.14358865958578723458865");
+                "out pi\n", "pi = 3.14358865958578723458865");
     }
+
     private void doTest(String input, String expectedOutput) {
         CodePointCharStream stream = CharStreams.fromString(input);
         AtorLexer lexer = new AtorLexer(stream);
         CommonTokenStream tokenStream = new CommonTokenStream(lexer);
         AtorParser parser = new AtorParser(tokenStream);
         AtorParser.ProgramContext program = parser.program();
-        try (CharArrayWriter charArrayWriter = new CharArrayWriter()) {
-            AtorBaseVisitor<Void> visitor = new ProgVisitor(new PrintWriter(charArrayWriter));
-            program.accept(visitor);
-            Assert.assertEquals(expectedOutput, charArrayWriter.toString());
-        }
+        StringBuilder stringBuilder = new StringBuilder();
+        AtorBaseVisitor<Void> visitor = new ProgVisitor(stringBuilder::append);
+        program.accept(visitor);
+        Assert.assertEquals(expectedOutput, stringBuilder.toString());
     }
 
 }
