@@ -1,5 +1,8 @@
 package xyz.elmot.interpret.eval;
 
+/**
+ * Generic script error information, used for both syntax and runtime errors
+ */
 public class ErrorInfo {
     private final String msg;
     private final int line;

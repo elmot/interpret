@@ -41,17 +41,16 @@ public interface Value {
 
         @Override
         public BigDecimal getNumber(ParserRuleContext ctx) {
-            if (value.count() == 1) {
-                //noinspection ConstantConditions
-                return value.findFirst().get();
-            }
-            throw new EvalException("Not a number", ctx);
+            //noinspection ConstantConditions
+            return value.reduce((a, b) -> {
+                throw new EvalException("Not a number", ctx);
+            }).orElseThrow(()->new EvalException("Empty sequence is not a number",ctx));
         }
 
         @Override
         public Num negate(ParserRuleContext ctx) {
             Number number = value.findFirst().orElseThrow(() -> new EvalException("Empty sequence instead of number", ctx));
-            value.findFirst().ifPresent(n->new EvalException("Not a number", ctx));
+            value.findFirst().ifPresent(n -> new EvalException("Not a number", ctx));
             return new Num((BigDecimal) number);
         }
     }

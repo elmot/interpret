@@ -10,6 +10,9 @@ import java.awt.event.KeyEvent;
 import java.awt.event.WindowEvent;
 import java.util.List;
 
+/** Main GUI class
+ *
+ */
 public class AtorGui {
 
     public static final String PI_EXAMPLE = "var n = 500\n" +

@@ -9,9 +9,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
+/**
+ * Script runner. If the script execution thread is {@link Thread#interrupted()}, the script execution is
+ * cancelled ASAP.
+ *
+ * See {@link xyz.elmot.interpret.eval.ProgVisitor#checkCancel()}
+ */
 public class Ator {
+    private Ator() {
+    }
 
-    public List<ErrorInfo> runScript(String input, Consumer<String> stringConsumer) {
+    public static List<ErrorInfo> runScript(String input, Consumer<String> stringConsumer) {
         ArrayList<ErrorInfo> errors = new ArrayList<>();
         CodePointCharStream stream = CharStreams.fromString(input);
         AtorLexer lexer = new AtorLexer(stream);

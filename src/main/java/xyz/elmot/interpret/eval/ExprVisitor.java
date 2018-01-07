@@ -10,7 +10,10 @@ import java.util.*;
 import java.util.stream.LongStream;
 import java.util.stream.Stream;
 
-
+/**
+ * The expression calculation visitor. Inherited from automatically-generated ANTLR4 stub.
+ * Supports two types of values - {@link BigDecimal} or {@link Stream} of {@link BigDecimal}s
+ */
 public class ExprVisitor extends AtorBaseVisitor<Void> {
 
     @SuppressWarnings("WeakerAccess")
@@ -18,9 +21,20 @@ public class ExprVisitor extends AtorBaseVisitor<Void> {
     @SuppressWarnings("WeakerAccess")
     public static final MathContext MATH_CONTEXT = new MathContext(MATH_PRECISION);
 
+    /**
+     * Global script variables
+     */
     private final Map<String, Value> vars;
+
+    /**
+     * Temporary stack of values, collected during operand-operation sequence execution
+     */
     private Deque<Value> valueStack = new ArrayDeque<>();
+    /**
+     * Temporary stack of operations, collected during operand-operation sequence execution
+     */
     private Deque<Op> opStack = new ArrayDeque<>();
+
     private boolean unaryMinus;
 
     @SuppressWarnings("WeakerAccess")
@@ -28,6 +42,9 @@ public class ExprVisitor extends AtorBaseVisitor<Void> {
         this.vars = vars;
     }
 
+    /**
+     * Name encountered
+     */
     @Override
     public Void visitName(AtorParser.NameContext ctx) {
         String name = ctx.NAME().getText();
@@ -40,6 +57,9 @@ public class ExprVisitor extends AtorBaseVisitor<Void> {
         return null;
     }
 
+    /**
+     * Number literal encountered
+     */
     @Override
     public Void visitNumber(AtorParser.NumberContext ctx) {
         BigDecimal v = new BigDecimal(ctx.NUMBER().getText());
@@ -47,20 +67,19 @@ public class ExprVisitor extends AtorBaseVisitor<Void> {
         return null;
     }
 
-    public Value getResult(ParserRuleContext ctx) {
-        resolve(0, ctx);
-        if (valueStack.size() != 1 || !opStack.isEmpty()) {
-            throw new RuntimeException("Internal calc error");
-        }
-        return valueStack.peek();
-    }
 
+    /**
+     * Expression in braces encountered => perform sub- expression calculation
+     */
     @Override
     public Void visitBraces(AtorParser.BracesContext ctx) {
         valueStack.push(calcValue(ctx.expr(), vars));
         return null;
     }
 
+    /**
+     * Map encountered
+     */
     @Override
     public Void visitMap(AtorParser.MapContext ctx) {
         Stream<BigDecimal> seq = calcValueSeq(ctx.expr(0), vars);
@@ -76,6 +95,9 @@ public class ExprVisitor extends AtorBaseVisitor<Void> {
         return null;
     }
 
+    /**
+     * Generic expression encountered => check unary minus
+     */
     @Override
     public Void visitExpr(AtorParser.ExprContext ctx) {
         if (ctx.MINUS() != null) {
@@ -84,6 +106,9 @@ public class ExprVisitor extends AtorBaseVisitor<Void> {
         return super.visitExpr(ctx);
     }
 
+    /**
+     * Operand encountered => use and reset unary minus flag (if set)
+     */
     @Override
     public Void visitOperand(AtorParser.OperandContext ctx) {
         super.visitOperand(ctx);
@@ -99,11 +124,14 @@ public class ExprVisitor extends AtorBaseVisitor<Void> {
     public Void visitOp(AtorParser.OpContext ctx) {
         String opText = ctx.OP().getText();
         Op op = Op.create(opText, ctx);
-        resolve(op.priority, ctx);
+        resolve(op.getPriority(), ctx);
         opStack.push(op);
         return null;
     }
 
+    /**
+     * Reduce encountered
+     */
     @Override
     public Void visitReduce(AtorParser.ReduceContext ctx) {
         Stream<BigDecimal> seq = calcValueSeq(ctx.expr(0), vars);
@@ -120,19 +148,9 @@ public class ExprVisitor extends AtorBaseVisitor<Void> {
         return null;
     }
 
-    private void resolve(int downToPriority, ParserRuleContext ctx) {
-        while (!opStack.isEmpty() && opStack.peek().priority >= downToPriority) {
-            Op op = opStack.pop();
-            BigDecimal b = valueStack.pop().getNumber(ctx);
-            BigDecimal a = valueStack.pop().getNumber(ctx);
-            try {
-                valueStack.push(new Value.Num(op.operation.apply(a, b)));
-            } catch (ArithmeticException e) {
-                throw new EvalException(e.getMessage(), ctx);
-            }
-        }
-    }
-
+    /**
+     * {@code {a,b}} expression encountered
+     */
     @Override
     public Void visitSeq(AtorParser.SeqContext ctx) {
         long a = calcValueNum(ctx.expr(0), vars).longValue();
@@ -142,15 +160,75 @@ public class ExprVisitor extends AtorBaseVisitor<Void> {
         return null;
     }
 
+    /**
+     * Performs final computations
+     *
+     * @param ctx diagnostics context
+     * @return result of the expression
+     */
+    @SuppressWarnings("WeakerAccess")
+    public Value getResult(ParserRuleContext ctx) {
+        resolve(0, ctx);
+        if (valueStack.size() != 1 || !opStack.isEmpty()) {
+            throw new EvalException("Internal calc error", ctx);
+        }
+        return valueStack.peek();
+    }
+
+    /**
+     * Performs full or partial computations over values accumulated in {@link #opStack} and {@link #valueStack}.
+     * The method scans accumulated data backward taking priorities in account.
+     *
+     * @param downToPriority minimal operation priority to be computed
+     * @param ctx            context for diagnostics
+     * @see Op#priority
+     */
+    private void resolve(int downToPriority, ParserRuleContext ctx) {
+        while (!opStack.isEmpty() && opStack.peek().getPriority()>= downToPriority) {
+            Op op = opStack.pop();
+            BigDecimal b = valueStack.pop().getNumber(ctx);
+            BigDecimal a = valueStack.pop().getNumber(ctx);
+            try {
+                valueStack.push(new Value.Num(op.getOperation().apply(a, b)));
+            } catch (ArithmeticException e) {
+                throw new EvalException(e.getMessage(), op.getContext());
+            }
+        }
+    }
+
+    /**
+     * Calculate expression value of numeric type
+     *
+     * @param exprContext the parsed expression
+     * @param vars        variables map
+     * @return the result
+     * @throws EvalException if something goes wrong or the result is not convertible to number
+     */
     private BigDecimal calcValueNum(AtorParser.ExprContext exprContext, Map<String, Value> vars) {
         return calcValue(exprContext, vars).getNumber(exprContext);
     }
 
+    /**
+     * Calculate expression value of type sequence
+     *
+     * @param exprContext the parsed expression
+     * @param vars        variables map
+     * @return the result
+     * @throws EvalException if something goes wrong or the result is not a sequence
+     */
     private Stream<BigDecimal> calcValueSeq(AtorParser.ExprContext exprContext, Map<String, Value> vars) {
         return calcValue(exprContext, vars).getSeq(exprContext);
     }
 
-    private Value calcValue(AtorParser.ExprContext exprContext, Map<String, Value> vars) {
+    /**
+     * Calculate a generic expression value
+     *
+     * @param exprContext the parsed expression
+     * @param vars        variables map
+     * @return the result
+     * @throws EvalException if something goes wrong
+     */
+    public static Value calcValue(AtorParser.ExprContext exprContext, Map<String, Value> vars) {
         ProgVisitor.checkCancel();
         ExprVisitor exprVisitor = new ExprVisitor(vars);
         exprContext.accept(exprVisitor);

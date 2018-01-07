@@ -5,7 +5,6 @@ import xyz.elmot.interpret.AtorParser;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 public class ProgVisitor extends AtorBaseVisitor<Void> {
@@ -39,19 +38,15 @@ public class ProgVisitor extends AtorBaseVisitor<Void> {
     @Override
     public Void visitVar(AtorParser.VarContext ctx) {
         String name = ctx.NAME().getText();
-        ExprVisitor exprVisitor = new ExprVisitor(vars);
-        AtorParser.ExprContext expr = ctx.expr();
-        expr.accept(exprVisitor);
-        vars.put(name, exprVisitor.getResult(expr));
+        Value value = ExprVisitor.calcValue(ctx.expr(), vars);
+        vars.put(name, value);
         return null;
     }
 
     @Override
     public Void visitOut(AtorParser.OutContext ctx) {
-        ExprVisitor exprVisitor = new ExprVisitor(vars);
-        AtorParser.ExprContext expr = ctx.expr();
-        expr.accept(exprVisitor);
-        out.accept(exprVisitor.getResult(expr).getString());
+        Value value = ExprVisitor.calcValue(ctx.expr(), vars);
+        out.accept(value.getString());
         return null;
     }
 }

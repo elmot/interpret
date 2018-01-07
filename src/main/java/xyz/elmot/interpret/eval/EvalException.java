@@ -2,6 +2,9 @@ package xyz.elmot.interpret.eval;
 
 import org.antlr.v4.runtime.ParserRuleContext;
 
+/**
+ * Exception thrown because of an errors
+ */
 public class EvalException extends RuntimeException{
     private final ParserRuleContext ctx;
 

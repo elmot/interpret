@@ -105,16 +105,51 @@ public class BasicTest {
         doTest(AtorGui.PI_EXAMPLE, "pi = 3.14358865958578723458865");
     }
 
+    @Test
+    public void testTypeCastFailure1() {
+        doTestException("out {1,2}*1", "Not a number");
+    }
+
+    @Test
+    public void testTypeCastFailure2() {
+        doTestException("out 1+{1,2}", "Not a number");
+    }
+
+    @Test
+    public void testTypeCastFailure3() {
+        doTestException("out map(1,i->i*2)", "Not a sequence");
+    }
+
+    @Test
+    public void testTypeCastFailure4() {
+        doTestException("out reduce(1,1,i j->i*j)", "Not a sequence");
+    }
+
+    @Test
+    public void testTypeCastFailure5() {
+        doTestException("out reduce({1,2},{1,2},i j->i*j)", "Not a number");
+    }
+
+    @Test
+    public void testTypeCastFailure6() {
+        doTestException("out reduce({10,20},1,i j->{i,j})", "Not a number");
+    }
+
+    @Test
+    public void testTypeCast1() {
+        doTest("out 1+{1,1}", "2");
+    }
+
     private void doTest(String input, String expectedOutput) {
         StringBuilder stringBuilder = new StringBuilder();
-        assertTrue(new Ator().runScript(input, stringBuilder::append).isEmpty());
+        assertTrue(Ator.runScript(input, stringBuilder::append).isEmpty());
         assertEquals(expectedOutput, stringBuilder.toString());
     }
 
     private void doTestException(String input, String firstMessage) {
-        List<ErrorInfo> errorInfos = new Ator().runScript(input, s -> {
+        List<ErrorInfo> errors = Ator.runScript(input, s -> {
         });
-        assertEquals(firstMessage, errorInfos.get(0).getMsg());
+        assertEquals(firstMessage, errors.get(0).getMsg());
     }
 
 }

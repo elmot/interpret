@@ -12,6 +12,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
+/**
+ * JTextPane supporting error highlighting, error message tooltips, and change notifications
+ */
 public class SyntaxTextPane extends JTextPane {
     private Style errorStyle;
     private List<ErrorLocation> errors = new ArrayList<>();
@@ -91,10 +94,10 @@ public class SyntaxTextPane extends JTextPane {
         removeHighlights();
         StyledDocument document = getStyledDocument();
         for (ErrorInfo info : errorInfos) {
-            Element element = document.getDefaultRootElement().getElement(info.getLine() - 1);
-            if (element != null) {
-                int lineOffset = element.getStartOffset();
-                int endOffset = element.getEndOffset();
+            Element paragraph = document.getDefaultRootElement().getElement(info.getLine() - 1);
+            if (paragraph != null) {
+                int lineOffset = paragraph.getStartOffset();
+                int endOffset = paragraph.getEndOffset();
                 int len = info.getLen();
                 int pos = lineOffset + info.getPos();
                 if (len <= 0) {
