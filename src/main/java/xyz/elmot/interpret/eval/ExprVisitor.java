@@ -204,7 +204,7 @@ public class ExprVisitor extends AtorBaseVisitor<Void> {
      * @return the result
      * @throws EvalException if something goes wrong or the result is not convertible to number
      */
-    private BigDecimal calcValueNum(AtorParser.ExprContext exprContext, Map<String, Value> vars) {
+    private static BigDecimal calcValueNum(AtorParser.ExprContext exprContext, Map<String, Value> vars) {
         return calcValue(exprContext, vars).getNumber(exprContext);
     }
 
@@ -216,7 +216,7 @@ public class ExprVisitor extends AtorBaseVisitor<Void> {
      * @return the result
      * @throws EvalException if something goes wrong or the result is not a sequence
      */
-    private Stream<BigDecimal> calcValueSeq(AtorParser.ExprContext exprContext, Map<String, Value> vars) {
+    private static Stream<BigDecimal> calcValueSeq(AtorParser.ExprContext exprContext, Map<String, Value> vars) {
         return calcValue(exprContext, vars).getSeq(exprContext);
     }
 

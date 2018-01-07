@@ -94,7 +94,7 @@ public class SyntaxTextPane extends JTextPane {
         removeHighlights();
         StyledDocument document = getStyledDocument();
         for (ErrorInfo info : errorInfos) {
-            Element paragraph = document.getDefaultRootElement().getElement(info.getLine() - 1);
+            Element paragraph = document.getDefaultRootElement().getElement(info.getLine());
             if (paragraph != null) {
                 int lineOffset = paragraph.getStartOffset();
                 int endOffset = paragraph.getEndOffset();

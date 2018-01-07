@@ -34,7 +34,7 @@ public class Ator {
                 if (offendingSymbol instanceof Token && ((Token) offendingSymbol).getText() != null) {
                     len = ((Token) offendingSymbol).getText().length();
                 }
-                errors.add(new ErrorInfo(msg, line, charPositionInLine, len));
+                errors.add(new ErrorInfo(msg, line - 1, charPositionInLine, len));
             }
         });
         AtorParser.ProgramContext program = parser.program();
@@ -45,7 +45,7 @@ public class Ator {
             } catch (EvalException e) {
                 Token start = e.getContext().getStart();
                 Token stop = e.getContext().getStop();
-                int line = start.getLine();
+                int line = start.getLine() - 1;
                 int pos = start.getCharPositionInLine();
                 int len = 0;
                 if (stop.getLine() == line) {

@@ -29,12 +29,6 @@ public class ProgVisitor extends AtorBaseVisitor<Void> {
         return super.visitStmt(ctx);
     }
 
-    public static void checkCancel() {
-        if (Thread.interrupted()) {
-            throw new CancelException();
-        }
-    }
-
     @Override
     public Void visitVar(AtorParser.VarContext ctx) {
         String name = ctx.NAME().getText();
@@ -49,4 +43,11 @@ public class ProgVisitor extends AtorBaseVisitor<Void> {
         out.accept(value.getString());
         return null;
     }
+
+    public static void checkCancel() {
+        if (Thread.interrupted()) {
+            throw new CancelException();
+        }
+    }
+
 }
