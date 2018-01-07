@@ -7,6 +7,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public interface Value {
+    Value ZERO = new Num(BigDecimal.ZERO);
+
     default BigDecimal getNumber(ParserRuleContext ctx) {
         throw new EvalException("Not a number", ctx);
     }
@@ -14,8 +16,6 @@ public interface Value {
     default Stream<BigDecimal> getSeq(ParserRuleContext ctx) {
         throw new EvalException("Not a sequence", ctx);
     }
-
-    Value.Num negate(ParserRuleContext ctx);
 
     String getString();
 
@@ -46,13 +46,6 @@ public interface Value {
                 throw new EvalException("Not a number", ctx);
             }).orElseThrow(()->new EvalException("Empty sequence is not a number",ctx));
         }
-
-        @Override
-        public Num negate(ParserRuleContext ctx) {
-            Number number = value.findFirst().orElseThrow(() -> new EvalException("Empty sequence instead of number", ctx));
-            value.findFirst().ifPresent(n -> new EvalException("Not a number", ctx));
-            return new Num((BigDecimal) number);
-        }
     }
 
     class Num implements Value {
@@ -71,12 +64,6 @@ public interface Value {
         @Override
         public String getString() {
             return value.toString();
-        }
-
-        @Override
-        public Num negate(ParserRuleContext ctx) {
-            value = value.negate();
-            return this;
         }
     }
 }

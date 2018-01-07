@@ -31,4 +31,9 @@ public class ErrorInfo {
     public int getLen() {
         return len;
     }
+
+    @Override
+    public String toString() {
+        return String.format("%s[%d,%d..%d]",msg,line,pos,pos+len);
+    }
 }

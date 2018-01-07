@@ -3,8 +3,8 @@ package xyz.elmot.interpret.eval;
 import xyz.elmot.interpret.AtorBaseVisitor;
 import xyz.elmot.interpret.AtorParser;
 
-import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 public class ProgVisitor extends AtorBaseVisitor<Void> {
@@ -14,7 +14,7 @@ public class ProgVisitor extends AtorBaseVisitor<Void> {
     }
 
     private final Consumer<String> out;
-    private Map<String, Value> vars = new LinkedHashMap<>();
+    private Map<String, Value> vars = new ConcurrentHashMap<>();
 
     @Override
     public Void visitPrint(AtorParser.PrintContext ctx) {

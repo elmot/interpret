@@ -7,6 +7,7 @@ import xyz.elmot.interpret.AtorParser;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.LongStream;
 import java.util.stream.Stream;
 
@@ -34,8 +35,6 @@ public class ExprVisitor extends AtorBaseVisitor<Void> {
      * Temporary stack of operations, collected during operand-operation sequence execution
      */
     private Deque<Op> opStack = new ArrayDeque<>();
-
-    private boolean unaryMinus;
 
     @SuppressWarnings("WeakerAccess")
     public ExprVisitor(Map<String, Value> vars) {
@@ -87,7 +86,7 @@ public class ExprVisitor extends AtorBaseVisitor<Void> {
         AtorParser.ExprContext lambda = ctx.expr(1);
         Stream<BigDecimal> valueStream = seq.map(n -> {
             ProgVisitor.checkCancel();
-            Map<String, Value> localVars = new HashMap<>(vars);
+            Map<String, Value> localVars = new ConcurrentHashMap<>(vars);
             localVars.put(varName, new Value.Num(n));
             return calcValueNum(lambda, localVars);
         });
@@ -95,37 +94,22 @@ public class ExprVisitor extends AtorBaseVisitor<Void> {
         return null;
     }
 
-    /**
-     * Generic expression encountered => check unary minus
-     */
-    @Override
-    public Void visitExpr(AtorParser.ExprContext ctx) {
-        if (ctx.MINUS() != null) {
-            unaryMinus = true;
-        }
-        return super.visitExpr(ctx);
-    }
-
-    /**
-     * Operand encountered => use and reset unary minus flag (if set)
-     */
-    @Override
-    public Void visitOperand(AtorParser.OperandContext ctx) {
-        super.visitOperand(ctx);
-        if (unaryMinus) {
-            unaryMinus = false;
-            Value.Num negated = valueStack.removeFirst().negate(ctx);
-            valueStack.addFirst(negated);
-        }
-        return null;
-    }
-
     @Override
     public Void visitOp(AtorParser.OpContext ctx) {
         String opText = ctx.OP().getText();
-        Op op = Op.create(opText, ctx);
-        resolve(op.getPriority(), ctx);
-        opStack.push(op);
+        Op op;
+        if (valueStack.isEmpty()) {
+            if ("-".equals(opText)) {
+                valueStack.push(Value.ZERO);
+                opStack.push(Op.minus(ctx));
+            } else {
+                throw new EvalException("Operator " + opText + " is not allowed here", ctx);
+            }
+        } else {
+            op = Op.create(opText, ctx);
+            resolve(op.getPriority(), ctx);
+            opStack.push(op);
+        }
         return null;
     }
 
@@ -138,8 +122,8 @@ public class ExprVisitor extends AtorBaseVisitor<Void> {
         String varNameA = ctx.NAME(0).getText();
         String varNameB = ctx.NAME(1).getText();
         AtorParser.ExprContext lambda = ctx.expr(2);
-        Map<String, Value> localVars = new HashMap<>(vars);
-        BigDecimal res = seq.reduce(calcValueNum(ctx.expr(1), vars), (a, b) -> {
+        Map<String, Value> localVars = new ConcurrentHashMap<>(vars);
+        BigDecimal res = seq.sequential().reduce(calcValueNum(ctx.expr(1), vars), (a, b) -> {
             localVars.put(varNameA, new Value.Num(a));
             localVars.put(varNameB, new Value.Num(b));
             return calcValueNum(lambda, localVars);
@@ -156,7 +140,9 @@ public class ExprVisitor extends AtorBaseVisitor<Void> {
         long a = calcValueNum(ctx.expr(0), vars).longValue();
         long b = calcValueNum(ctx.expr(1), vars).longValue();
 
-        valueStack.push(new Value.Seq(LongStream.rangeClosed(a, b).mapToObj(BigDecimal::new)));
+        valueStack.push(new Value.Seq(LongStream.rangeClosed(a, b)
+                .parallel()
+                .mapToObj(BigDecimal::new)));
         return null;
     }
 
@@ -184,16 +170,23 @@ public class ExprVisitor extends AtorBaseVisitor<Void> {
      * @see Op#priority
      */
     private void resolve(int downToPriority, ParserRuleContext ctx) {
-        while (!opStack.isEmpty() && opStack.peek().getPriority()>= downToPriority) {
+        BigDecimal lastValue = null;
+        while (!opStack.isEmpty() && opStack.peek().getPriority() >= downToPriority) {
             Op op = opStack.pop();
-            BigDecimal b = valueStack.pop().getNumber(ctx);
+            if (lastValue == null) {
+                lastValue = valueStack.pop().getNumber(ctx);
+            }
             BigDecimal a = valueStack.pop().getNumber(ctx);
             try {
-                valueStack.push(new Value.Num(op.getOperation().apply(a, b)));
+                lastValue = op.getOperation().apply(a, lastValue);
             } catch (ArithmeticException e) {
                 throw new EvalException(e.getMessage(), op.getContext());
             }
         }
+        if (lastValue != null) {
+            valueStack.push(new Value.Num(lastValue));
+        }
+
     }
 
     /**
@@ -224,13 +217,13 @@ public class ExprVisitor extends AtorBaseVisitor<Void> {
      * Calculate a generic expression value
      *
      * @param exprContext the parsed expression
-     * @param vars        variables map
+     * @param localVars   variables map
      * @return the result
      * @throws EvalException if something goes wrong
      */
-    public static Value calcValue(AtorParser.ExprContext exprContext, Map<String, Value> vars) {
+    public static Value calcValue(AtorParser.ExprContext exprContext, Map<String, Value> localVars) {
         ProgVisitor.checkCancel();
-        ExprVisitor exprVisitor = new ExprVisitor(vars);
+        ExprVisitor exprVisitor = new ExprVisitor(localVars);
         exprContext.accept(exprVisitor);
         return exprVisitor.getResult(exprContext);
     }

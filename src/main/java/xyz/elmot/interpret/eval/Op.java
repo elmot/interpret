@@ -52,7 +52,7 @@ class Op {
                 op = new Op((a, b) -> a.add(b, ExprVisitor.MATH_CONTEXT), 1, ctx);
                 break;
             case "-":
-                op = new Op((a, b) -> a.subtract(b, ExprVisitor.MATH_CONTEXT), 2, ctx);
+                op = minus(ctx);
                 break;
             case "*":
                 op = new Op((a, b) -> a.multiply(b, ExprVisitor.MATH_CONTEXT), 3, ctx);
@@ -79,5 +79,9 @@ class Op {
 
     public ParserRuleContext getContext() {
         return context;
+    }
+
+    public static Op minus(AtorParser.OpContext ctx) {
+        return new Op((a, b) -> a.subtract(b, ExprVisitor.MATH_CONTEXT), 2, ctx);
     }
 }
