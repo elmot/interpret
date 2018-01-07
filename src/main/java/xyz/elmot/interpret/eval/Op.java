@@ -1,6 +1,5 @@
 package xyz.elmot.interpret.eval;
 
-import org.jetbrains.annotations.NotNull;
 import xyz.elmot.interpret.AtorParser;
 
 import java.math.BigDecimal;
@@ -29,7 +28,6 @@ class Op {
 
     }
 
-    @NotNull
     @SuppressWarnings("WeakerAccess")
     public static Op create(String opText, AtorParser.OpContext ctx) {
         Op op;

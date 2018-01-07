@@ -107,12 +107,12 @@ public class BasicTest {
 
     private void doTest(String input, String expectedOutput) {
         StringBuilder stringBuilder = new StringBuilder();
-        assertTrue(Ator.runScript(input, stringBuilder::append).isEmpty());
+        assertTrue(new Ator().runScript(input, stringBuilder::append).isEmpty());
         assertEquals(expectedOutput, stringBuilder.toString());
     }
 
     private void doTestException(String input, String firstMessage) {
-        List<ErrorInfo> errorInfos = Ator.runScript(input, s -> {
+        List<ErrorInfo> errorInfos = new Ator().runScript(input, s -> {
         });
         assertEquals(firstMessage, errorInfos.get(0).getMsg());
     }

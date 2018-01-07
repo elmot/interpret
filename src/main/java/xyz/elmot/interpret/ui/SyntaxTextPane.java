@@ -15,14 +15,10 @@ import java.util.concurrent.atomic.AtomicLong;
 public class SyntaxTextPane extends JTextPane {
     private Style errorStyle;
     private List<ErrorLocation> errors = new ArrayList<>();
-    private TextChangeHandler textChangeHandler;
+    private Runnable textChangeHandler;
     private final AtomicLong version = new AtomicLong();
 
-    public TextChangeHandler getTextChangeHandler() {
-        return textChangeHandler;
-    }
-
-    public void setTextChangeHandler(TextChangeHandler textChangeHandler) {
+    public void setTextChangeHandler(Runnable textChangeHandler) {
         this.textChangeHandler = textChangeHandler;
     }
 
@@ -55,7 +51,7 @@ public class SyntaxTextPane extends JTextPane {
         SwingUtilities.invokeLater(() -> {
             removeHighlights();
             if (textChangeHandler != null) {
-                textChangeHandler.textChanged(version.get(), getText());
+                textChangeHandler.run();
             }
         });
     }
@@ -108,7 +104,7 @@ public class SyntaxTextPane extends JTextPane {
                 if (len <= 0 || pos >= endOffset - 1) {
                     //Fallback #2 - mark the whole line erroneous
                     pos = lineOffset;
-                    len = element.getEndOffset() - pos - 1;
+                    len = endOffset - pos - 1;
                 }
                 document.setCharacterAttributes(pos,
                         len, errorStyle, true);
@@ -123,9 +119,8 @@ public class SyntaxTextPane extends JTextPane {
         return errors.stream().filter(e -> e.start <= i && e.end > i).map(e -> e.msg).findAny().orElse(null);
     }
 
-    @FunctionalInterface
-    public interface TextChangeHandler {
-        void textChanged(long version, String text);
+    public long getVersion() {
+        return version.get();
     }
 
     private static class ErrorLocation {

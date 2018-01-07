@@ -10,7 +10,8 @@ import java.util.List;
 import java.util.function.Consumer;
 
 public class Ator {
-    public static List<ErrorInfo> runScript(String input, Consumer<String> stringConsumer) {
+
+    public List<ErrorInfo> runScript(String input, Consumer<String> stringConsumer) {
         ArrayList<ErrorInfo> errors = new ArrayList<>();
         CodePointCharStream stream = CharStreams.fromString(input);
         AtorLexer lexer = new AtorLexer(stream);
@@ -21,12 +22,16 @@ public class Ator {
         parser.addErrorListener(new BaseErrorListener() {
             @Override
             public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol, int line, int charPositionInLine, String msg, RecognitionException e) {
-                errors.add(new ErrorInfo(msg, line, charPositionInLine, 1));
+                int len = 1;
+                if (offendingSymbol instanceof Token && ((Token) offendingSymbol).getText() != null) {
+                    len = ((Token) offendingSymbol).getText().length();
+                }
+                errors.add(new ErrorInfo(msg, line, charPositionInLine, len));
             }
         });
         AtorParser.ProgramContext program = parser.program();
         if (parser.getNumberOfSyntaxErrors() == 0) {
-            AtorBaseVisitor<Void> visitor = new ProgVisitor(stringConsumer);
+            ProgVisitor visitor = new ProgVisitor(stringConsumer);
             try {
                 program.accept(visitor);
             } catch (EvalException e) {

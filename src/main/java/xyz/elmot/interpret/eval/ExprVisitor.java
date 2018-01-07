@@ -10,7 +10,6 @@ import java.util.*;
 import java.util.stream.LongStream;
 import java.util.stream.Stream;
 
-import static xyz.elmot.interpret.eval.ProgVisitor.checkCancel;
 
 public class ExprVisitor extends AtorBaseVisitor<Void> {
 
@@ -68,7 +67,7 @@ public class ExprVisitor extends AtorBaseVisitor<Void> {
         String varName = ctx.NAME().getText();
         AtorParser.ExprContext lambda = ctx.expr(1);
         Stream<BigDecimal> valueStream = seq.map(n -> {
-            checkCancel();
+            ProgVisitor.checkCancel();
             Map<String, Value> localVars = new HashMap<>(vars);
             localVars.put(varName, new Value.Num(n));
             return calcValueNum(lambda, localVars);
@@ -123,7 +122,6 @@ public class ExprVisitor extends AtorBaseVisitor<Void> {
 
     private void resolve(int downToPriority, ParserRuleContext ctx) {
         while (!opStack.isEmpty() && opStack.peek().priority >= downToPriority) {
-            checkCancel();
             Op op = opStack.pop();
             BigDecimal b = valueStack.pop().getNumber(ctx);
             BigDecimal a = valueStack.pop().getNumber(ctx);
@@ -153,7 +151,7 @@ public class ExprVisitor extends AtorBaseVisitor<Void> {
     }
 
     private Value calcValue(AtorParser.ExprContext exprContext, Map<String, Value> vars) {
-        checkCancel();
+        ProgVisitor.checkCancel();
         ExprVisitor exprVisitor = new ExprVisitor(vars);
         exprContext.accept(exprVisitor);
         return exprVisitor.getResult(exprContext);

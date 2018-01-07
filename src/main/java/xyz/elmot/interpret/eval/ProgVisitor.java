@@ -5,9 +5,11 @@ import xyz.elmot.interpret.AtorParser;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 public class ProgVisitor extends AtorBaseVisitor<Void> {
+
     public ProgVisitor(Consumer<String> out) {
         this.out = out;
     }
@@ -28,9 +30,8 @@ public class ProgVisitor extends AtorBaseVisitor<Void> {
         return super.visitStmt(ctx);
     }
 
-    @SuppressWarnings("WeakerAccess")
     public static void checkCancel() {
-        if (Thread.currentThread().isInterrupted()) {
+        if (Thread.interrupted()) {
             throw new CancelException();
         }
     }

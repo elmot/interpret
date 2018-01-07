@@ -1,7 +1,5 @@
 package xyz.elmot.interpret.ui;
 
-import org.jetbrains.annotations.NotNull;
-import xyz.elmot.interpret.Ator;
 import xyz.elmot.interpret.eval.ErrorInfo;
 
 import javax.swing.*;
@@ -26,6 +24,7 @@ public class AtorGui {
     private JTextArea outTextArea;
     private JLabel errorLabel;
     private JFrame frame;
+    private final BackgroundScriptExecutor scriptExecutor;
 
     private AtorGui() {
         scriptTextPane = new SyntaxTextPane();
@@ -33,6 +32,7 @@ public class AtorGui {
         errorLabel = new JLabel();
         errorLabel.setBorder(BorderFactory.createBevelBorder(BevelBorder.LOWERED));
         errorLabel.setPreferredSize(new Dimension(100, 32));
+        scriptExecutor = new BackgroundScriptExecutor();
     }
 
     public static void main(String[] args) {
@@ -68,47 +68,45 @@ public class AtorGui {
         frame.setLocationByPlatform(true);
 
         frame.pack();
-        scriptTextPane.setTextChangeHandler((v, text) -> runScript(text));
+        scriptTextPane.setTextChangeHandler(() -> {
+            outTextArea.setText("");
+            outTextArea.setEditable(false);
+            errorLabel.setForeground(BUSY_COLOR);
+            errorLabel.setText("Running...");
+            scriptExecutor.runBackgroundScript(scriptTextPane.getVersion(), scriptTextPane.getText(),
+                    result -> SwingUtilities.invokeLater(() -> processResult(result)));
+        });
         frame.setVisible(true);
     }
 
-    private void runScript(String text) {
-        outTextArea.setText("");
-        outTextArea.setEditable(false);
-        errorLabel.setForeground(BUSY_COLOR);
-        errorLabel.setText("Running...");
-        try {
-            List<ErrorInfo> errorInfos = Ator.runScript(text, s -> outTextArea.append(s));
-            if (errorInfos.isEmpty()) {
+    private void processResult(BackgroundScriptExecutor.Result result) {
+        if (scriptTextPane.getVersion() == result.getId()) {
+            List<ErrorInfo> errors = result.getErrors();
+            outTextArea.setText(result.getOutput());
+            if (errors.isEmpty()) {
                 errorLabel.setForeground(READY_COLOR);
                 errorLabel.setText("Ready");
-                SwingUtilities.invokeLater(() -> scriptTextPane.removeHighlights());
+                scriptTextPane.removeHighlights();
             } else {
                 errorLabel.setForeground(ERROR_COLOR);
-                ErrorInfo errorInfo = errorInfos.get(0);
+                ErrorInfo errorInfo = errors.get(0);
                 String msg = errorInfo.getMsg();
-                switch (errorInfos.size()) {
+                switch (errors.size()) {
                     case 1:
                         break;
                     case 2:
                         msg += " and one more error";
                         break;
                     default:
-                        msg += " and " + (errorInfos.size() - 1) + " more errors";
+                        msg += " and " + (errors.size() - 1) + " more errors";
                         break;
                 }
                 errorLabel.setText(msg);
-                SwingUtilities.invokeLater(() -> scriptTextPane.highlightErrors(errorInfos));
+                scriptTextPane.highlightErrors(errors);
             }
-
-        } catch (RuntimeException e) {
-            errorLabel.setForeground(Color.RED.darker());
-            errorLabel.setText(e.getClass().getSimpleName() + ": " + e.getMessage());
         }
-
     }
 
-    @NotNull
     private JComponent createMenu() {
         JMenu jMenu = new JMenu("File");
         JMenuItem loadPi = new JMenuItem("Load Pi Example");
