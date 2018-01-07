@@ -6,6 +6,10 @@ import java.util.stream.Collectors
 import java.util.stream.Stream
 
 interface Value {
+    companion object {
+        val ZERO: Value = Num(BigDecimal.ZERO)
+    }
+
     fun getNumber(ctx: ParserRuleContext): BigDecimal {
         throw EvalException("Not a number", ctx)
     }
@@ -13,8 +17,6 @@ interface Value {
     fun getSeq(ctx: ParserRuleContext): Stream<BigDecimal> {
         throw EvalException("Not a sequence", ctx)
     }
-
-    fun negate(ctx: ParserRuleContext): Value.Num
 
     fun getString(): String
 
@@ -28,10 +30,6 @@ interface Value {
             return value.toString()
         }
 
-        override fun negate(ctx: ParserRuleContext): Num {
-            value = value.negate()
-            return this
-        }
     }
 
     class Seq(private val value: Stream<BigDecimal>) : Value {
@@ -50,12 +48,6 @@ interface Value {
                     .orElseThrow({ EvalException("Empty sequence is not a number", ctx) })
         }
 
-        override fun negate(ctx :ParserRuleContext ):Num
-        {
-            val number:Number  = value.findFirst ().orElseThrow({EvalException("Empty sequence instead of number", ctx)})
-            value.findFirst().ifPresent({_ -> throw EvalException("Not a number", ctx)})
-            return Num (number as BigDecimal)
-        }
     }
 
 }

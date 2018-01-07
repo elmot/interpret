@@ -42,7 +42,7 @@ class Op(val operation: (BigDecimal, BigDecimal) -> BigDecimal,
                 "+" ->
                     Op({ a, b -> a.add(b, ExprVisitor.MATH_CONTEXT) }, 1, ctx)
                 "-" ->
-                    Op({ a, b -> a.subtract(b, ExprVisitor.MATH_CONTEXT) }, 2, ctx)
+                    minus(ctx)
                 "*" ->
                     Op({ a, b -> a.multiply(b, ExprVisitor.MATH_CONTEXT) }, 3, ctx)
                 "/" ->
@@ -55,6 +55,8 @@ class Op(val operation: (BigDecimal, BigDecimal) -> BigDecimal,
             return op
         }
 
+        fun minus(ctx: AtorParser.OpContext) =
+                Op({ a, b -> a.subtract(b, ExprVisitor.MATH_CONTEXT) }, 2, ctx)
 
     }
 }

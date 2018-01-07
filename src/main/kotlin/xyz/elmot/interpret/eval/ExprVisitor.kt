@@ -6,6 +6,7 @@ import xyz.elmot.interpret.AtorParser
 import java.math.BigDecimal
 import java.math.MathContext
 import java.util.*
+import java.util.concurrent.ConcurrentHashMap
 import java.util.stream.LongStream
 import java.util.stream.Stream
 
@@ -24,8 +25,6 @@ class ExprVisitor(private val vars: Map<String, Value>) : AtorBaseVisitor<Any>()
      * Temporary stack of operations, collected during operand-operation sequence execution
      */
     private val opStack = ArrayDeque<Op>()
-
-    private var unaryMinus: Boolean = false
 
     /**
      * Name encountered
@@ -68,7 +67,7 @@ class ExprVisitor(private val vars: Map<String, Value>) : AtorBaseVisitor<Any>()
         val lambda = ctx.expr(1)
         val valueStream = seq.map { n ->
             ProgVisitor.checkCancel()
-            val localVars = HashMap(vars)
+            val localVars = ConcurrentHashMap(vars)
             localVars.put(varName, Value.Num(n))
             calcValueNum(lambda, localVars)
         }
@@ -76,34 +75,20 @@ class ExprVisitor(private val vars: Map<String, Value>) : AtorBaseVisitor<Any>()
         return null
     }
 
-    /**
-     * Generic expression encountered => check unary minus
-     */
-    override fun visitExpr(ctx: AtorParser.ExprContext): Any? {
-        if (ctx.MINUS() != null) {
-            unaryMinus = true
-        }
-        return super.visitExpr(ctx)
-    }
-
-    /**
-     * Operand encountered => use and reset unary minus flag (if set)
-     */
-    override fun visitOperand(ctx: AtorParser.OperandContext): Void? {
-        super.visitOperand(ctx)
-        if (unaryMinus) {
-            unaryMinus = false
-            val negated = valueStack.removeFirst().negate(ctx)
-            valueStack.addFirst(negated)
-        }
-        return null
-    }
-
     override fun visitOp(ctx: AtorParser.OpContext): Void? {
         val opText = ctx.OP().text
-        val op = Op.create(opText, ctx)
-        resolve(op.priority, ctx)
-        opStack.push(op)
+        if (valueStack.isEmpty()) {
+            if ("-".equals(opText)) {
+                valueStack.push(Value.ZERO)
+                opStack.push(Op.minus(ctx))
+            } else {
+                throw EvalException("Operator $opText is not allowed here", ctx)
+            }
+        } else {
+            val op = Op.create(opText, ctx)
+            resolve(op.priority, ctx)
+            opStack.push(op)
+        }
         return null
     }
 
@@ -116,7 +101,7 @@ class ExprVisitor(private val vars: Map<String, Value>) : AtorBaseVisitor<Any>()
         val varNameB = ctx.NAME(1).text
         val lambda = ctx.expr(2)
         val localVars = HashMap(vars)
-        val res = seq.reduce(calcValueNum(ctx.expr(1), vars)) { a, b ->
+        val res = seq.sequential().reduce(calcValueNum(ctx.expr(1), vars)) { a, b ->
             localVars.put(varNameA, Value.Num(a))
             localVars.put(varNameB, Value.Num(b))
             calcValueNum(lambda, localVars)
@@ -132,7 +117,9 @@ class ExprVisitor(private val vars: Map<String, Value>) : AtorBaseVisitor<Any>()
         val a = calcValueNum(ctx.expr(0), vars).toLong()
         val b = calcValueNum(ctx.expr(1), vars).toLong()
 
-        valueStack.push(Value.Seq(LongStream.rangeClosed(a, b).mapToObj({ it.toBigDecimal() })))
+        valueStack.push(Value.Seq(LongStream.rangeClosed(a, b)
+                .parallel()
+                .mapToObj({ it.toBigDecimal() })))
         return null
     }
 
@@ -159,16 +146,22 @@ class ExprVisitor(private val vars: Map<String, Value>) : AtorBaseVisitor<Any>()
      * @see Op.priority
      */
     private fun resolve(downToPriority: Int, ctx: ParserRuleContext) {
+        var lastValue: BigDecimal? = null
         while (!opStack.isEmpty() && opStack.peek().priority >= downToPriority) {
             val op = opStack.pop()
-            val b = valueStack.pop().getNumber(ctx)
-            val a = valueStack.pop().getNumber(ctx)
+            if (lastValue == null) {
+                lastValue = valueStack.pop().getNumber(op.context)
+            }
+            val a = valueStack.pop().getNumber(op.context)
             try {
-                valueStack.push(Value.Num(op.operation.invoke(a, b)))
+                lastValue = op.operation.invoke(a, lastValue)
             } catch (e: ArithmeticException) {
-                throw EvalException("" + e.message, op.context)
+                throw EvalException(e.message, op.context)
             }
 
+        }
+        if (lastValue != null) {
+            valueStack.push(Value.Num(lastValue))
         }
     }
 

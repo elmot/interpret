@@ -2,13 +2,13 @@ package xyz.elmot.interpret.eval
 
 import xyz.elmot.interpret.AtorBaseVisitor
 import xyz.elmot.interpret.AtorParser
-import java.util.*
+import java.util.concurrent.ConcurrentHashMap
 
 class ProgVisitor(val out: (String)->Unit) : AtorBaseVisitor<Any>() {
     /**
      * Global script variables
      */
-    private val vars = LinkedHashMap<String, Value>()
+    private val vars:MutableMap<String, Value> = ConcurrentHashMap()
 
     override fun visitPrint(ctx: AtorParser.PrintContext): Any? {
         val text = ctx.TEXT().text
