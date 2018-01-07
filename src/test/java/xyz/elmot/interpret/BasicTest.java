@@ -1,6 +1,8 @@
 package xyz.elmot.interpret;
 
 import org.junit.Test;
+import xyz.elmot.interpret.eval.ErrorInfo;
+import xyz.elmot.interpret.ui.AtorGui;
 
 import java.util.List;
 
@@ -100,11 +102,7 @@ public class BasicTest {
 
     @Test
     public void testPi() {
-        doTest("var n = 500\n" +
-                "var sequence = map({0, n}, i -> (-1)^i / (2.0 * i + 1))\n" +
-                "var pi = 4 * reduce(sequence, 0, x y -> x + y)\n" +
-                "print \"pi = \"\n" +
-                "out pi\n", "pi = 3.14358865958578723458865");
+        doTest(AtorGui.PI_EXAMPLE, "pi = 3.14358865958578723458865");
     }
 
     private void doTest(String input, String expectedOutput) {
@@ -114,7 +112,7 @@ public class BasicTest {
     }
 
     private void doTestException(String input, String firstMessage) {
-        List<Ator.ErrorInfo> errorInfos = Ator.runScript(input, s -> {
+        List<ErrorInfo> errorInfos = Ator.runScript(input, s -> {
         });
         assertEquals(firstMessage, errorInfos.get(0).getMsg());
     }

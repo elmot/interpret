@@ -1,6 +1,7 @@
 package xyz.elmot.interpret;
 
 import org.antlr.v4.runtime.*;
+import xyz.elmot.interpret.eval.ErrorInfo;
 import xyz.elmot.interpret.eval.EvalException;
 import xyz.elmot.interpret.eval.ProgVisitor;
 
@@ -49,33 +50,4 @@ public class Ator {
         return errors;
     }
 
-    public static class ErrorInfo {
-        private final String msg;
-        private final int line;
-        private final int pos;
-        private final int len;
-
-        private ErrorInfo(String msg, int line, int pos, int len) {
-            this.msg = msg;
-            this.line = line;
-            this.pos = pos;
-            this.len = len;
-        }
-
-        public String getMsg() {
-            return msg;
-        }
-
-        public int getLine() {
-            return line;
-        }
-
-        public int getPos() {
-            return pos;
-        }
-
-        public int getLen() {
-            return len;
-        }
-    }
 }

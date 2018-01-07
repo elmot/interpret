@@ -2,25 +2,31 @@ package xyz.elmot.interpret.ui;
 
 import org.jetbrains.annotations.NotNull;
 import xyz.elmot.interpret.Ator;
+import xyz.elmot.interpret.eval.ErrorInfo;
 
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
-import javax.swing.text.*;
 import java.awt.*;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
+import java.awt.event.WindowEvent;
 import java.util.List;
 
 public class AtorGui {
 
-    private JTextPane textPane;
-    private Style errorStyle;
+    public static final String PI_EXAMPLE = "var n = 500\n" +
+            "var sequence = map({0, n}, i -> (-1)^i / (2.0 * i + 1))\n" +
+            "var pi = 4 * reduce(sequence, 0, x y -> x + y)\n" +
+            "print \"pi = \"\n" +
+            "out pi";
+    private SyntaxTextPane scriptTextPane;
     private JTextArea outTextArea;
     private JLabel errorLabel;
+    private JFrame frame;
 
     private AtorGui() {
-        textPane = new JTextPane();
-        errorStyle = textPane.getStyledDocument().addStyle("error", null);
-        errorStyle.addAttribute(StyleConstants.Background, Color.pink);
+        scriptTextPane = new SyntaxTextPane();
         outTextArea = new JTextArea();
         errorLabel = new JLabel("Init...");
     }
@@ -31,16 +37,16 @@ public class AtorGui {
 
     private void createAndShowGUI() {
         JFrame f = createFrame();
-        textPane.getDocument().addDocumentListener(
+        scriptTextPane.getDocument().addDocumentListener(
                 new DocumentListener() {
                     @Override
                     public void insertUpdate(DocumentEvent e) {
-                        runScript(textPane.getText());
+                        runScript(scriptTextPane.getText());
                     }
 
                     @Override
                     public void removeUpdate(DocumentEvent e) {
-                        runScript(textPane.getText());
+                        runScript(scriptTextPane.getText());
                     }
 
                     @Override
@@ -57,18 +63,17 @@ public class AtorGui {
         outTextArea.setEditable(false);
         errorLabel.setForeground(Color.DARK_GRAY);
         errorLabel.setText("Running...");
-        SwingUtilities.invokeLater(() ->
-                textPane.getStyledDocument().setCharacterAttributes(0, Integer.MAX_VALUE, SimpleAttributeSet.EMPTY, true));
         try {
-            List<Ator.ErrorInfo> errorInfos = Ator.runScript(text, s -> outTextArea.append(s));
+            List<ErrorInfo> errorInfos = Ator.runScript(text, s -> outTextArea.append(s));
             if (errorInfos.isEmpty()) {
                 errorLabel.setForeground(Color.GREEN.darker());
                 errorLabel.setText("Ready");
+                SwingUtilities.invokeLater(() -> scriptTextPane.removeHighlights());
             } else {
                 errorLabel.setForeground(Color.RED.darker());
-                Ator.ErrorInfo errorInfo = errorInfos.get(0);
+                ErrorInfo errorInfo = errorInfos.get(0);
                 errorLabel.setText(errorInfo.getMsg());
-                SwingUtilities.invokeLater(() -> highlightErrors(errorInfos));
+                SwingUtilities.invokeLater(() -> scriptTextPane.highlightErrors(errorInfos));
             }
 
         } catch (RuntimeException e) {
@@ -78,42 +83,21 @@ public class AtorGui {
 
     }
 
-    private void highlightErrors(List<Ator.ErrorInfo> errorInfos) {
-        StyledDocument document = textPane.getStyledDocument();
-        for (Ator.ErrorInfo info : errorInfos) {
-            Element element = document.getDefaultRootElement().getElement(info.getLine() - 1);
-            if (element != null) {
-                int lineOffset = element.getStartOffset();
-                int endOffset = element.getEndOffset();
-                int len = info.getLen();
-                int pos = lineOffset + info.getPos();
-                if (len <= 0) {
-                    //Fallback #1 - mark text up to line end erroneous
-                    len = endOffset - pos - 1;
-                }
-                if (len <= 0 || pos >= endOffset - 1) {
-                    //Fallback #2 - mark whole line erroneous
-                    pos = lineOffset;
-                    len = element.getEndOffset() - pos - 1;
-                }
-                document.setCharacterAttributes(pos,
-                        len, errorStyle, true);
-            }
-        }
-    }
-
     @NotNull
     private JFrame createFrame() {
-        JFrame f = new JFrame("Ator Demo");
-        f.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+        frame = new JFrame("Ator Demo");
+        frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         JSplitPane splitPane = new JSplitPane();
+
 
         JPanel leftPanel = new JPanel(new BorderLayout());
         leftPanel.add(new JLabel("Script source"), BorderLayout.NORTH);
-        textPane.setPreferredSize(new Dimension(600, 600));
-        leftPanel.add(textPane, BorderLayout.CENTER);
+
+        scriptTextPane.setPreferredSize(new Dimension(600, 600));
+        leftPanel.add(scriptTextPane, BorderLayout.CENTER);
         leftPanel.add(errorLabel, BorderLayout.SOUTH);
         splitPane.setLeftComponent(leftPanel);
+
 
         JPanel rightPanel = new JPanel(new BorderLayout());
         rightPanel.add(new JLabel("Output"), BorderLayout.NORTH);
@@ -121,12 +105,30 @@ public class AtorGui {
         rightPanel.add(outTextArea, BorderLayout.CENTER);
         splitPane.setRightComponent(rightPanel);
 
+        JPanel rootPanel = new JPanel(new BorderLayout());
+        rootPanel.add(splitPane, BorderLayout.CENTER);
+        rootPanel.add(createMenu(), BorderLayout.NORTH);
+        frame.add(rootPanel);
 
-        f.add(splitPane);
+        frame.setLocationByPlatform(true);
 
-        f.setLocationByPlatform(true);
+        frame.pack();
+        return frame;
+    }
 
-        f.pack();
-        return f;
+    @NotNull
+    private JComponent createMenu() {
+        JMenu jMenu = new JMenu("File");
+        JMenuItem loadPi = new JMenuItem("Load Pi Example");
+        loadPi.addActionListener(e -> scriptTextPane.setText(PI_EXAMPLE));
+        jMenu.add(loadPi);
+        jMenu.addSeparator();
+        JMenuItem exit = new JMenuItem("Exit", KeyEvent.VK_X);
+        exit.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_X, InputEvent.ALT_MASK));
+        exit.addActionListener(e -> frame.dispatchEvent(new WindowEvent(frame, WindowEvent.WINDOW_CLOSING)));
+        jMenu.add(exit);
+        JMenuBar jMenuBar = new JMenuBar();
+        jMenuBar.add(jMenu);
+        return jMenuBar;
     }
 }

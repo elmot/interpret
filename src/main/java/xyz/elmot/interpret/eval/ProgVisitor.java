@@ -23,6 +23,19 @@ public class ProgVisitor extends AtorBaseVisitor<Void> {
     }
 
     @Override
+    public Void visitStmt(AtorParser.StmtContext ctx) {
+        checkCancel();
+        return super.visitStmt(ctx);
+    }
+
+    @SuppressWarnings("WeakerAccess")
+    public static void checkCancel() {
+        if (Thread.currentThread().isInterrupted()) {
+            throw new CancelException();
+        }
+    }
+
+    @Override
     public Void visitVar(AtorParser.VarContext ctx) {
         String name = ctx.NAME().getText();
         ExprVisitor exprVisitor = new ExprVisitor(vars);

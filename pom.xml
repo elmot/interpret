@@ -53,6 +53,9 @@
                         <goals>
                             <goal>antlr4</goal>
                         </goals>
+                        <configuration>
+                            <listener>false</listener>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
