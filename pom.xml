@@ -74,6 +74,7 @@
                             <sourceDirs>
                                 <sourceDir>${project.basedir}/src/main/kotlin</sourceDir>
                                 <sourceDir>${project.basedir}/src/main/java</sourceDir>
+                                <sourceDir>${project.basedir}/target/generated-sources/antlr4</sourceDir>
                             </sourceDirs>
                         </configuration>
                     </execution>
@@ -132,7 +133,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>xyz.elmot.interpret.ui.AtorGui</mainClass>
+                            <mainClass>xyz.elmot.interpret.ui.AtorGuiKt</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>
