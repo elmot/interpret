@@ -5,8 +5,7 @@ import xyz.elmot.interpret.Ator;
 import xyz.elmot.interpret.eval.ErrorInfo;
 
 import javax.swing.*;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
+import javax.swing.border.BevelBorder;
 import java.awt.*;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
@@ -20,6 +19,9 @@ public class AtorGui {
             "var pi = 4 * reduce(sequence, 0, x y -> x + y)\n" +
             "print \"pi = \"\n" +
             "out pi";
+    private static final Color BUSY_COLOR = Color.DARK_GRAY;
+    private static final Color READY_COLOR = Color.GREEN.darker();
+    private static final Color ERROR_COLOR = Color.RED.darker();
     private SyntaxTextPane scriptTextPane;
     private JTextArea outTextArea;
     private JLabel errorLabel;
@@ -28,63 +30,17 @@ public class AtorGui {
     private AtorGui() {
         scriptTextPane = new SyntaxTextPane();
         outTextArea = new JTextArea();
-        errorLabel = new JLabel("Init...");
+        errorLabel = new JLabel();
+        errorLabel.setBorder(BorderFactory.createBevelBorder(BevelBorder.LOWERED));
+        errorLabel.setPreferredSize(new Dimension(100, 32));
     }
 
     public static void main(String[] args) {
+        ToolTipManager.sharedInstance().setInitialDelay(100);
         SwingUtilities.invokeLater(() -> new AtorGui().createAndShowGUI());
     }
 
     private void createAndShowGUI() {
-        JFrame f = createFrame();
-        scriptTextPane.getDocument().addDocumentListener(
-                new DocumentListener() {
-                    @Override
-                    public void insertUpdate(DocumentEvent e) {
-                        runScript(scriptTextPane.getText());
-                    }
-
-                    @Override
-                    public void removeUpdate(DocumentEvent e) {
-                        runScript(scriptTextPane.getText());
-                    }
-
-                    @Override
-                    public void changedUpdate(DocumentEvent e) {
-                    }
-                }
-        );
-
-        f.setVisible(true);
-    }
-
-    private void runScript(String text) {
-        outTextArea.setText("");
-        outTextArea.setEditable(false);
-        errorLabel.setForeground(Color.DARK_GRAY);
-        errorLabel.setText("Running...");
-        try {
-            List<ErrorInfo> errorInfos = Ator.runScript(text, s -> outTextArea.append(s));
-            if (errorInfos.isEmpty()) {
-                errorLabel.setForeground(Color.GREEN.darker());
-                errorLabel.setText("Ready");
-                SwingUtilities.invokeLater(() -> scriptTextPane.removeHighlights());
-            } else {
-                errorLabel.setForeground(Color.RED.darker());
-                ErrorInfo errorInfo = errorInfos.get(0);
-                errorLabel.setText(errorInfo.getMsg());
-                SwingUtilities.invokeLater(() -> scriptTextPane.highlightErrors(errorInfos));
-            }
-
-        } catch (RuntimeException e) {
-            errorLabel.setForeground(Color.RED.darker());
-            errorLabel.setText(e.getClass().getSimpleName() + ": " + e.getMessage());
-        }
-
-    }
-
-    @NotNull
-    private JFrame createFrame() {
         frame = new JFrame("Ator Demo");
         frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         JSplitPane splitPane = new JSplitPane();
@@ -92,10 +48,8 @@ public class AtorGui {
 
         JPanel leftPanel = new JPanel(new BorderLayout());
         leftPanel.add(new JLabel("Script source"), BorderLayout.NORTH);
-
         scriptTextPane.setPreferredSize(new Dimension(600, 600));
         leftPanel.add(scriptTextPane, BorderLayout.CENTER);
-        leftPanel.add(errorLabel, BorderLayout.SOUTH);
         splitPane.setLeftComponent(leftPanel);
 
 
@@ -108,12 +62,50 @@ public class AtorGui {
         JPanel rootPanel = new JPanel(new BorderLayout());
         rootPanel.add(splitPane, BorderLayout.CENTER);
         rootPanel.add(createMenu(), BorderLayout.NORTH);
+        rootPanel.add(errorLabel, BorderLayout.SOUTH);
         frame.add(rootPanel);
 
         frame.setLocationByPlatform(true);
 
         frame.pack();
-        return frame;
+        scriptTextPane.setTextChangeHandler((v, text) -> runScript(text));
+        frame.setVisible(true);
+    }
+
+    private void runScript(String text) {
+        outTextArea.setText("");
+        outTextArea.setEditable(false);
+        errorLabel.setForeground(BUSY_COLOR);
+        errorLabel.setText("Running...");
+        try {
+            List<ErrorInfo> errorInfos = Ator.runScript(text, s -> outTextArea.append(s));
+            if (errorInfos.isEmpty()) {
+                errorLabel.setForeground(READY_COLOR);
+                errorLabel.setText("Ready");
+                SwingUtilities.invokeLater(() -> scriptTextPane.removeHighlights());
+            } else {
+                errorLabel.setForeground(ERROR_COLOR);
+                ErrorInfo errorInfo = errorInfos.get(0);
+                String msg = errorInfo.getMsg();
+                switch (errorInfos.size()) {
+                    case 1:
+                        break;
+                    case 2:
+                        msg += " and one more error";
+                        break;
+                    default:
+                        msg += " and " + (errorInfos.size() - 1) + " more errors";
+                        break;
+                }
+                errorLabel.setText(msg);
+                SwingUtilities.invokeLater(() -> scriptTextPane.highlightErrors(errorInfos));
+            }
+
+        } catch (RuntimeException e) {
+            errorLabel.setForeground(Color.RED.darker());
+            errorLabel.setText(e.getClass().getSimpleName() + ": " + e.getMessage());
+        }
+
     }
 
     @NotNull

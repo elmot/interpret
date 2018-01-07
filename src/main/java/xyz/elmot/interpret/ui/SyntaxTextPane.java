@@ -3,33 +3,86 @@ package xyz.elmot.interpret.ui;
 import xyz.elmot.interpret.eval.ErrorInfo;
 
 import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.text.*;
 import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class SyntaxTextPane extends JTextPane {
     private Style errorStyle;
     private List<ErrorLocation> errors = new ArrayList<>();
+    private TextChangeHandler textChangeHandler;
+    private final AtomicLong version = new AtomicLong();
 
+    public TextChangeHandler getTextChangeHandler() {
+        return textChangeHandler;
+    }
+
+    public void setTextChangeHandler(TextChangeHandler textChangeHandler) {
+        this.textChangeHandler = textChangeHandler;
+    }
 
     @SuppressWarnings("WeakerAccess")
     public SyntaxTextPane() {
         init();
-    }
-
-    private void init() {
-        errorStyle = getStyledDocument().addStyle("error", null);
-        errorStyle.addAttribute(StyleConstants.Background, Color.pink);
-        ToolTipManager.sharedInstance().registerComponent(this);
-        ToolTipManager.sharedInstance().setInitialDelay(100);
+        initDocument();
     }
 
     @SuppressWarnings("unused")
     public SyntaxTextPane(StyledDocument doc) {
         super(doc);
         init();
+    }
+
+    @Override
+    public void setStyledDocument(StyledDocument doc) {
+        super.setStyledDocument(doc);
+        initDocument();
+    }
+
+    @Override
+    public void setDocument(Document doc) {
+        super.setDocument(doc);
+        initDocument();
+    }
+
+    private void documentChanged() {
+        version.incrementAndGet();
+        SwingUtilities.invokeLater(() -> {
+            removeHighlights();
+            if (textChangeHandler != null) {
+                textChangeHandler.textChanged(version.get(), getText());
+            }
+        });
+    }
+
+    private void init() {
+        ToolTipManager.sharedInstance().registerComponent(this);
+        getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                documentChanged();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                documentChanged();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+
+            }
+        });
+    }
+
+    private void initDocument() {
+        errorStyle = getStyledDocument().addStyle("error", null);
+        errorStyle.addAttribute(StyleConstants.Background, Color.pink);
     }
 
     public void removeHighlights() {
@@ -67,7 +120,12 @@ public class SyntaxTextPane extends JTextPane {
     @Override
     public String getToolTipText(MouseEvent event) {
         int i = viewToModel(event.getPoint());
-        return errors.stream().filter(e -> e.start <= i && e.end >= i).map(e -> e.msg).findAny().orElse(null);
+        return errors.stream().filter(e -> e.start <= i && e.end > i).map(e -> e.msg).findAny().orElse(null);
+    }
+
+    @FunctionalInterface
+    public interface TextChangeHandler {
+        void textChanged(long version, String text);
     }
 
     private static class ErrorLocation {
