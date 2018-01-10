@@ -103,8 +103,9 @@ class ExprVisitor(private val vars: Map<String, Value>) : AtorBaseVisitor<Any>()
         val varNameA = ctx.NAME(0).text
         val varNameB = ctx.NAME(1).text
         val lambda = ctx.expr(2)
-        val localVars = HashMap(vars)
-        val res = seq.get().sequential().reduce(calcValueNum(ctx.expr(1), vars)) { a, b ->
+        val neutral = calcValueNum(ctx.expr(1), vars)
+        val res = seq.get().sequential().reduce(neutral) { a, b ->
+            val localVars = HashMap(vars)
             localVars.put(varNameA, Value.Num(a))
             localVars.put(varNameB, Value.Num(b))
             calcValueNum(lambda, localVars)
