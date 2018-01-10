@@ -1,6 +1,7 @@
 package xyz.elmot.interpret;
 
 import org.antlr.v4.runtime.*;
+import xyz.elmot.interpret.eval.CancelException;
 import xyz.elmot.interpret.eval.ErrorInfo;
 import xyz.elmot.interpret.eval.EvalException;
 import xyz.elmot.interpret.eval.ProgVisitor;
@@ -8,6 +9,7 @@ import xyz.elmot.interpret.eval.ProgVisitor;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.logging.Logger;
 
 /**
  * Script runner. If the script execution thread is {@link Thread#interrupted()}, the script execution is
@@ -16,6 +18,9 @@ import java.util.function.Consumer;
  * See {@link xyz.elmot.interpret.eval.ProgVisitor#checkCancel()}
  */
 public class Ator {
+
+    public static final Logger LOGGER = Logger.getLogger(Ator.class.getName());
+
     private Ator() {
     }
 
@@ -58,6 +63,8 @@ public class Ator {
                     len = start.getText().length();
                 }
                 errors.add(new ErrorInfo(e.getMessage(), line, pos, len));
+            } catch (CancelException ce) {
+                LOGGER.info("Cancelled thread " + Thread.currentThread().getId());
             }
         }
         return errors;

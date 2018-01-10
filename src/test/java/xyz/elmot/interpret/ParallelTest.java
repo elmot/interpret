@@ -6,7 +6,7 @@ import org.junit.Test;
 public class ParallelTest extends BaseTest{
     @Test
     public void testParallel1() {
-        doTest("out reduce(map({1,1000}, i-> i*2),1, x y-> x+y)","1001001");
+        doTest("out reduce(map({1,1000}, i-> i*2),0, x y-> x+y)","1001000");
     }
 
     @Test

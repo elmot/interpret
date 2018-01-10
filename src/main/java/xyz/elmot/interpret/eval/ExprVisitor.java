@@ -8,6 +8,7 @@ import java.math.BigDecimal;
 import java.math.MathContext;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 import java.util.stream.LongStream;
 import java.util.stream.Stream;
 
@@ -81,10 +82,10 @@ public class ExprVisitor extends AtorBaseVisitor<Void> {
      */
     @Override
     public Void visitMap(AtorParser.MapContext ctx) {
-        Stream<BigDecimal> seq = calcValueSeq(ctx.expr(0), vars);
+        Supplier<Stream<BigDecimal>> seq = calcValueSeq(ctx.expr(0), vars);
         String varName = ctx.NAME().getText();
         AtorParser.ExprContext lambda = ctx.expr(1);
-        Stream<BigDecimal> valueStream = seq.map(n -> {
+        Supplier<Stream<BigDecimal>> valueStream = () -> seq.get().map(n -> {
             ProgVisitor.checkCancel();
             Map<String, Value> localVars = new ConcurrentHashMap<>(vars);
             localVars.put(varName, new Value.Num(n));
@@ -118,12 +119,12 @@ public class ExprVisitor extends AtorBaseVisitor<Void> {
      */
     @Override
     public Void visitReduce(AtorParser.ReduceContext ctx) {
-        Stream<BigDecimal> seq = calcValueSeq(ctx.expr(0), vars);
+        Supplier<Stream<BigDecimal>> seq = calcValueSeq(ctx.expr(0), vars);
         String varNameA = ctx.NAME(0).getText();
         String varNameB = ctx.NAME(1).getText();
         AtorParser.ExprContext lambda = ctx.expr(2);
-        Map<String, Value> localVars = new ConcurrentHashMap<>(vars);
-        BigDecimal res = seq.sequential().reduce(calcValueNum(ctx.expr(1), vars), (a, b) -> {
+        BigDecimal res = seq.get()/*.sequential()*/.reduce(calcValueNum(ctx.expr(1), vars), (a, b) -> {
+            Map<String, Value> localVars = new ConcurrentHashMap<>(vars);
             localVars.put(varNameA, new Value.Num(a));
             localVars.put(varNameB, new Value.Num(b));
             return calcValueNum(lambda, localVars);
@@ -140,7 +141,7 @@ public class ExprVisitor extends AtorBaseVisitor<Void> {
         long a = calcValueNum(ctx.expr(0), vars).longValue();
         long b = calcValueNum(ctx.expr(1), vars).longValue();
 
-        valueStack.push(new Value.Seq(LongStream.rangeClosed(a, b)
+        valueStack.push(new Value.Seq(() -> LongStream.rangeClosed(a, b)
                 .parallel()
                 .mapToObj(BigDecimal::new)));
         return null;
@@ -209,7 +210,7 @@ public class ExprVisitor extends AtorBaseVisitor<Void> {
      * @return the result
      * @throws EvalException if something goes wrong or the result is not a sequence
      */
-    private static Stream<BigDecimal> calcValueSeq(AtorParser.ExprContext exprContext, Map<String, Value> vars) {
+    private static Supplier<Stream<BigDecimal>> calcValueSeq(AtorParser.ExprContext exprContext, Map<String, Value> vars) {
         return calcValue(exprContext, vars).getSeq(exprContext);
     }
 

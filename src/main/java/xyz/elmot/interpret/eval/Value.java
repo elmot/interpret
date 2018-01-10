@@ -3,6 +3,7 @@ package xyz.elmot.interpret.eval;
 import org.antlr.v4.runtime.ParserRuleContext;
 
 import java.math.BigDecimal;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -13,7 +14,7 @@ public interface Value {
         throw new EvalException("Not a number", ctx);
     }
 
-    default Stream<BigDecimal> getSeq(ParserRuleContext ctx) {
+    default Supplier<Stream<BigDecimal>> getSeq(ParserRuleContext ctx) {
         throw new EvalException("Not a sequence", ctx);
     }
 
@@ -21,28 +22,28 @@ public interface Value {
 
 
     class Seq implements Value {
-        private final Stream<BigDecimal> value;
+        private final Supplier<Stream<BigDecimal>> value;
 
         @SuppressWarnings("WeakerAccess")
-        public Seq(Stream<BigDecimal> value) {
+        public Seq(Supplier<Stream<BigDecimal>> value) {
             this.value = value;
         }
 
         @Override
         public String getString() {
-            return value.map(Object::toString)
+            return value.get().map(Object::toString)
                     .collect(Collectors.joining(",", "[", "]"));
         }
 
         @Override
-        public Stream<BigDecimal> getSeq(ParserRuleContext ctx) {
+        public Supplier<Stream<BigDecimal>> getSeq(ParserRuleContext ctx) {
             return value;
         }
 
         @Override
         public BigDecimal getNumber(ParserRuleContext ctx) {
             //noinspection ConstantConditions
-            return value.reduce((a, b) -> {
+            return value.get().reduce((a, b) -> {
                 throw new EvalException("Not a number", ctx);
             }).orElseThrow(()->new EvalException("Empty sequence is not a number",ctx));
         }

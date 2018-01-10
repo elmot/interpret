@@ -19,4 +19,8 @@ public class MinusTest extends BaseTest {
         doTest("out - 2+(-10)+(-(-100))+1000", "1088");
     }
 
+    @Test
+    public void plusUnaryMinus() {
+        doTest("out 10+-1", "9");
+    }
 }
