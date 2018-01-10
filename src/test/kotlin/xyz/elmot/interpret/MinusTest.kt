@@ -15,8 +15,13 @@ class MinusTest : BaseTest() {
     }
 
     @Test
-    operator fun unaryMinus() {
+    fun unaryMinus() {
         doTest("out - 2+(-10)+(-(-100))+1000", "1088")
+    }
+
+    @Test
+    fun plusUnaryMinus() {
+        doTest("out 10+ -1", "9")
     }
 
 }
