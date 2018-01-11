@@ -123,7 +123,7 @@ public class ExprVisitor extends AtorBaseVisitor<Void> {
         String varNameA = ctx.NAME(0).getText();
         String varNameB = ctx.NAME(1).getText();
         AtorParser.ExprContext lambda = ctx.expr(2);
-        BigDecimal res = seq.get()/*.sequential()*/.reduce(calcValueNum(ctx.expr(1), vars), (a, b) -> {
+        BigDecimal res = seq.get().reduce(calcValueNum(ctx.expr(1), vars), (a, b) -> {
             Map<String, Value> localVars = new ConcurrentHashMap<>(vars);
             localVars.put(varNameA, new Value.Num(a));
             localVars.put(varNameB, new Value.Num(b));
