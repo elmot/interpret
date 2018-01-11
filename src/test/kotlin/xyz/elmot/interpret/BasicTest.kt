@@ -27,7 +27,7 @@ class BasicTest: BaseTest() {
 
     @Test
     fun reduceBaseTest() {
-        doTest("out reduce({1,3}, 100, x y -> x * y)", "600")
+        doTest("out reduce({1,3}, 1, x y -> x * y)", "6")
     }
 
     @Test
