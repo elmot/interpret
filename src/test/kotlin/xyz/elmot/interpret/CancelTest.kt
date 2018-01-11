@@ -5,7 +5,7 @@ import org.junit.Test
 import java.util.concurrent.ScheduledThreadPoolExecutor
 import java.util.concurrent.atomic.AtomicBoolean
 
-class TimeTest {
+class CancelTest {
 
     private val LONG_RUNNING_SCRIPT = "out reduce({1,10e10}, 1e3,a b ->a*b)"
     @Test(timeout = 1000)
