@@ -7,6 +7,7 @@ import java.math.BigDecimal
 import java.math.MathContext
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
+import java.util.function.Supplier
 import java.util.stream.LongStream
 import java.util.stream.Stream
 
@@ -65,11 +66,13 @@ class ExprVisitor(private val vars: Map<String, Value>) : AtorBaseVisitor<Any>()
         val seq = calcValueSeq(ctx.expr(0), vars)
         val varName = ctx.NAME().text
         val lambda = ctx.expr(1)
-        val valueStream = seq.map { n ->
-            ProgVisitor.checkCancel()
-            val localVars = ConcurrentHashMap(vars)
-            localVars.put(varName, Value.Num(n))
-            calcValueNum(lambda, localVars)
+        val valueStream = Supplier{
+            seq.get().map { n ->
+                ProgVisitor.checkCancel()
+                val localVars = ConcurrentHashMap(vars)
+                localVars.put(varName, Value.Num(n))
+                calcValueNum(lambda, localVars)
+            }
         }
         valueStack.push(Value.Seq(valueStream))
         return null
@@ -100,7 +103,8 @@ class ExprVisitor(private val vars: Map<String, Value>) : AtorBaseVisitor<Any>()
         val varNameA = ctx.NAME(0).text
         val varNameB = ctx.NAME(1).text
         val lambda = ctx.expr(2)
-        val res = seq.reduce(calcValueNum(ctx.expr(1), vars)) { a, b ->
+        val neutral = calcValueNum(ctx.expr(1), vars)
+        val res = seq.get().reduce(neutral) { a, b ->
             val localVars = HashMap(vars)
             localVars.put(varNameA, Value.Num(a))
             localVars.put(varNameB, Value.Num(b))
@@ -117,9 +121,9 @@ class ExprVisitor(private val vars: Map<String, Value>) : AtorBaseVisitor<Any>()
         val a = calcValueNum(ctx.expr(0), vars).toLong()
         val b = calcValueNum(ctx.expr(1), vars).toLong()
 
-        valueStack.push(Value.Seq(LongStream.rangeClosed(a, b)
+        valueStack.push( Value.Seq(Supplier {LongStream.rangeClosed(a, b)
                 .parallel()
-                .mapToObj({ it.toBigDecimal() })))
+                .mapToObj({ it.toBigDecimal() })}))
         return null
     }
 
@@ -186,7 +190,7 @@ class ExprVisitor(private val vars: Map<String, Value>) : AtorBaseVisitor<Any>()
          * @return the result
          * @throws EvalException if something goes wrong or the result is not a sequence
          */
-        private fun calcValueSeq(exprContext: AtorParser.ExprContext, vars: Map<String, Value>): Stream<BigDecimal> {
+        private fun calcValueSeq(exprContext: AtorParser.ExprContext, vars: Map<String, Value>): Supplier<Stream<BigDecimal>> {
             return calcValue(exprContext, vars).getSeq(exprContext)
         }
 

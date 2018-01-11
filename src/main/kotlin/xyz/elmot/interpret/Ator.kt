@@ -1,11 +1,14 @@
 package xyz.elmot.interpret
 
 import org.antlr.v4.runtime.*
+import xyz.elmot.interpret.eval.CancelException
 import xyz.elmot.interpret.eval.ErrorInfo
 import xyz.elmot.interpret.eval.EvalException
 import xyz.elmot.interpret.eval.ProgVisitor
+import java.util.logging.Logger
 
 object Ator {
+    val logger = Logger.getLogger(Ator.javaClass.name)
 
     fun runScript(input: String , stringConsumer: (String) -> Unit) :List<ErrorInfo> {
         val errors:MutableList<ErrorInfo>  = mutableListOf()
@@ -49,6 +52,8 @@ object Ator {
                     len = start.text.length
                 }
                 errors.add(ErrorInfo("" + e.message, line - 1, pos, len))
+            } catch (ce: CancelException) {
+                logger.info("Thread " + Thread.currentThread().id + " cancelled")
             }
         }
         return errors
