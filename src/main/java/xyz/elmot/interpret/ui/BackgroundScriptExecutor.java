@@ -5,9 +5,7 @@ import xyz.elmot.interpret.eval.ErrorInfo;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ForkJoinPool;
 import java.util.function.Consumer;
 
 /**
@@ -16,7 +14,11 @@ import java.util.function.Consumer;
 public class BackgroundScriptExecutor {
     @SuppressWarnings("WeakerAccess")
     public static final int KDB_DEBOUNCE_MSEC = 300;
-    private volatile ScheduledExecutorService pool = Executors.newSingleThreadScheduledExecutor();
+    private volatile ForkJoinPool pool = newForkJoinPool();
+
+    private ForkJoinPool newForkJoinPool() {
+        return new ForkJoinPool(Math.max(2, Runtime.getRuntime().availableProcessors() - 1));
+    }
 
     public static class Result {
         private final long id;
@@ -47,15 +49,17 @@ public class BackgroundScriptExecutor {
     public void runBackgroundScript(long runId, String scriptText, Consumer<Result> whenDone) {
         killRunningBackground();
         Result result = new Result(runId);
-        pool.schedule(() -> {
+        pool.submit(() -> {
             try {
+                Thread.sleep(KDB_DEBOUNCE_MSEC);
                 result.setErrors(Ator.runScript(scriptText, s -> result.output.append(s)));
             } catch (RuntimeException e) {
                 String msg = e.getClass().getSimpleName() + ": " + e.getMessage();
                 result.setErrors(Collections.singletonList(new ErrorInfo(msg, 0, 0, 100)));
+            } catch (InterruptedException ignored) {
             }
             whenDone.accept(result);
-        }, KDB_DEBOUNCE_MSEC, TimeUnit.MILLISECONDS);
+        });
     }
 
     /**
@@ -63,6 +67,6 @@ public class BackgroundScriptExecutor {
      */
     private void killRunningBackground() {
         pool.shutdownNow();
-        pool = Executors.newSingleThreadScheduledExecutor();
+        pool = newForkJoinPool();
     }
 }
