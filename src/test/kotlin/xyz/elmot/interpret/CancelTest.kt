@@ -1,8 +1,9 @@
 package xyz.elmot.interpret
 
-import org.junit.Assert
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.util.concurrent.ScheduledThreadPoolExecutor
+import java.util.concurrent.ForkJoinPool
 import java.util.concurrent.atomic.AtomicBoolean
 
 class CancelTest {
@@ -11,16 +12,16 @@ class CancelTest {
     @Test(timeout = 1000)
     @Throws(InterruptedException::class)
     fun testCancelProto() {
-        val executor = ScheduledThreadPoolExecutor(1)
         val finished = AtomicBoolean(false)
-        executor.submit {
+        var forkJoinPool = ForkJoinPool(7);
+        forkJoinPool.submit {
             Ator.runScript(LONG_RUNNING_SCRIPT) { _ -> }
             finished.set(true)
         }
-        Thread.sleep(50)
-        Assert.assertEquals(1, executor.activeCount.toLong())
-        executor.shutdownNow()
+        Thread.sleep(300)
+        assertTrue("Multiple thread are running",forkJoinPool.activeThreadCount > 1);
+        forkJoinPool.shutdownNow()
         Thread.sleep(200)
-        Assert.assertEquals(0, executor.activeCount.toLong())
+        assertEquals(0, forkJoinPool.activeThreadCount)
     }
 }
